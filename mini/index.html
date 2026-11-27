@@ -2811,7 +2811,7 @@ function guideFrame() { const show = S.started && !mapOpen && !vista && dest && 
     g.visible = true; g.position.set(x, Math.max(heightAt(x, z), 0) + .55, z); g.rotation.y = Math.atan2(b.x - a.x, b.z - a.z);
     g.material.opacity = .85 * Math.min(1, (want - 4) / 4) * (1 - sstep(48, 68, want)); } }
 const mini = $('mini'), mctx = mini.getContext('2d'), mapC = $('mapc'), bctx = mapC.getContext('2d');
-let mapOpen = false, mapSel = 0;
+let mapOpen = false, mapSel = 0; const ANIMN = { deer: ['🦌', 'Deer'], fox: ['🦊', 'Foxes'], wolf: ['🐺', 'Wolves'], rabbit: ['🐇', 'Rabbits'], ibex: ['🐐', 'Ibex'], horse: ['🐎', 'Horses'], giraffe: ['🦒', 'Giraffes'], elephant: ['🐘', 'Elephants'], monkey: ['🐒', 'Monkeys'], parrot: ['🦜', 'Parrots'], jaguar: ['🐆', 'Jaguar'], gull: ['🐦', 'Gulls'], ibis: ['🦩', 'Ibises'] };
 function poiIcon(c, x, y, p, s, hl) { c.lineWidth = Math.max(1.5, s * .2); c.strokeStyle = 'rgba(44,22,34,.95)'; c.fillStyle = p.found ? '#8fe6bc' : p.kind === 'camp' ? '#ffb04a' : '#e9b0ff';
   c.beginPath(); if (p.kind === 'camp') { c.moveTo(x, y - s); c.lineTo(x + s * .95, y + s * .75); c.lineTo(x - s * .95, y + s * .75); } else { c.moveTo(x, y - s); c.lineTo(x + s * .85, y); c.lineTo(x, y + s); c.lineTo(x - s * .85, y); }
   c.closePath(); c.fill(); c.stroke();
@@ -2838,6 +2838,7 @@ function drawBig() { const c = bctx, W2 = mapC.width, sc = W2 / (2 * HALF), mx =
   c.clearRect(0, 0, W2, W2); c.drawImage(mapCv, 0, 0, W2, W2); routeLine(c, 8, 4.5, mx, mz); if (rally) for (const [i, t] of [[rally.iS, 'SS1 start'], [rally.iF, 'Finish']]) { const p = rally.pts[i], x = mx(p), y = mz(p); for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) { c.fillStyle = (a + b) % 2 ? '#111' : '#fff'; c.fillRect(x - 9 + a * 6, y - 9 + b * 6, 6, 6); } c.strokeStyle = 'rgba(44,22,34,.9)'; c.lineWidth = 2; c.strokeRect(x - 9, y - 9, 18, 18); c.font = 'bold 15px sans-serif'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.lineWidth = 4; c.strokeText(t, x + 13, y); c.fillStyle = '#fff'; c.fillText(t, x + 13, y); }
   { const p = sunSpot(); if (p) sunMark(c, mx(p), mz(p), 24); }
   c.fillStyle = '#ffd34d'; c.strokeStyle = 'rgba(44,22,34,.9)'; c.lineWidth = 1.5; for (const s of stamps) if (!s.got) { c.beginPath(); c.arc(mx(s), mz(s), 4, 0, 6.283); c.fill(); c.stroke(); }
+  c.font = '17px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; for (const s of animalSites) { const k = s.kinds.find(q => ANIMN[q]); if (!k) continue; const near = POI.some(q => Math.hypot(q.x - s.x, q.z - s.z) < 5), x = mx(s) + (near ? -19 : 0), y = mz(s) + (near ? 15 : 0); c.fillStyle = 'rgba(44,22,34,.55)'; c.beginPath(); c.arc(x, y, 11, 0, 6.283); c.fill(); c.fillStyle = '#fff'; c.fillText(ANIMN[k][0], x, y + 1); if (dest && dest.kind === 'animal' && dest.x === s.x && dest.z === s.z) { c.strokeStyle = '#2fd6ff'; c.lineWidth = 3; c.beginPath(); c.arc(x, y, 15, 0, 6.283); c.stroke(); } }
   c.font = 'bold 17px sans-serif'; c.textBaseline = 'middle';
   for (const p of POI) { const x = mx(p), y = mz(p); poiIcon(c, x, y, p, 11, p === dest); const right = x < W2 * .68; c.textAlign = right ? 'left' : 'right';
     c.lineWidth = 4; c.strokeStyle = 'rgba(44,22,34,.9)'; c.fillStyle = '#fff'; c.strokeText(p.name, x + (right ? 17 : -17), y); c.fillText(p.name, x + (right ? 17 : -17), y); }
@@ -2848,11 +2849,13 @@ function buildMapList() { const el = $('maplist'); el.innerHTML = '';
   mk('Auto: nearest new place', () => { destManual = false; autoDest(); play('tick'); buildMapList(); drawBig(); }, !destManual);
   if (rally) mk('🏁 Rally stage SS1', () => { setDest(rally.place, true); play('tick'); buildMapList(); drawBig(); }, destManual && dest === rally.place);
   POI.forEach(p => mk((p.found ? '✓ ' : p.kind === 'camp' ? '▲ ' : '◆ ') + p.name, () => { setDest(p, true); play('tick'); buildMapList(); drawBig(); }, destManual && dest === p));
-  mk('Close map', closeMap, false);
+  { const ks = []; for (const s of animalSites) for (const k of s.kinds) if (ANIMN[k] && ks.indexOf(k) < 0) ks.push(k); ks.sort((a, b) => ANIMN[a][1] < ANIMN[b][1] ? -1 : 1);
+    for (const k of ks) { let best = null, bd = 1e9; for (const s of animalSites) if (s.kinds.indexOf(k) >= 0 && s.list.some(a => a.sp === s.list[0].sp || true)) { const d = Math.hypot(s.x - S.x, s.z - S.z); if (d < bd) { bd = d; best = s; } } if (!best) continue;
+      mk(ANIMN[k][0] + ' ' + ANIMN[k][1] + ' · ' + Math.round(bd / 10) * 10 + ' m', () => { setDest({ x: best.x, z: best.z, name: ANIMN[k][1], kind: 'animal', animal: k, found: true, R: 12 }, true); play('tick'); buildMapList(); drawBig(); }, destManual && dest && dest.animal === k); } }
   [...el.children].forEach((b, i) => b.classList.toggle('cur', pad.on && i === mapSel)); }
 function openMap() { if (!S.started || mapOpen) return; mapOpen = true; mapSel = 0; root.classList.add('inmap'); $('bigmap').classList.add('show'); buildMapList(); drawBig(); play('click'); }
 function closeMap() { if (!mapOpen) return; mapOpen = false; root.classList.remove('inmap'); $('bigmap').classList.remove('show'); play('click'); }
-function mapMove(d) { const n = POI.length + 2 + (rally ? 1 : 0); mapSel = (mapSel + d + n) % n; buildMapList(); const b = $('maplist').children[mapSel]; if (b && b.scrollIntoView) b.scrollIntoView({ block: 'nearest' }); play('tick'); }
+function mapMove(d) { const n = $('maplist').children.length || 1; mapSel = (mapSel + d + n) % n; buildMapList(); const b = $('maplist').children[mapSel]; if (b && b.scrollIntoView) b.scrollIntoView({ block: 'nearest' }); play('tick'); }
 function mapChoose() { const b = $('maplist').children[mapSel]; if (b) b.click(); }
 mini.addEventListener('pointerdown', e => { e.preventDefault(); usingTouch(e); openMap(); });
 mapC.addEventListener('pointerdown', e => { const sc = mapC.width / mapC.clientWidth, x = e.offsetX * sc, y = e.offsetY * sc, k = mapC.width / (2 * HALF); if (CH.teleport) { teleportTo(HALF - x / k, HALF - y / k); return; } let best = null, bd = 34;
@@ -4069,7 +4072,7 @@ let stillT = 0, hornAt = -1e9; const animalSites = [];
     herd('horse', 7, b => b < .35); herd('giraffe', 6, b => b > .45 && b < .92); herd('deer', 7, b => b < .4); herd('rabbit', 6, b => b < .5); herd('fox', 4, b => b < .45); herd('ibex', 6, b => b > .5); herd('wolf', 3, b => true); }
   if (jungle) for (const kind of ['elephant', 'ibis', 'monkey', 'elephant', 'parrot', 'monkey']) for (let t = 0; t < 60; t++) { const a = ar() * 6.283, r = Math.sqrt(ar()) * jungle.r * .8, x = jungle.x + Math.sin(a) * r, z = jungle.z + Math.cos(a) * r;
     if (heightAt(x, z) > 1.6 && slopeAt(x, z, 8) < .25 && !spots.some(s => Math.hypot(s.x - x, s.z - z) < 90)) { spots.push({ x, z, R: 6, kinds: [kind] }); break; } }
-  for (const P of spots) { const site = { x: P.x, z: P.z, on: true, list: [] };
+  for (const P of spots) { const site = { x: P.x, z: P.z, on: true, list: [], kinds: P.kinds };
     for (const kind of P.kinds) { const sp = SP[kind];
       for (let i = 0; i < sp.n; i++) { let hx = 0, hz = 0, ok = false;
         if (sp.perch) { hx = jungle.rock.x; hz = jungle.rock.z; ok = true; }
