@@ -1308,6 +1308,12 @@ function scatter(geo, items, mat, cast, tag, far) { if (mat === natLeafMat && !g
     sync(); BBSYNC.push(sync); scene.add(bm); }
 }
 // things you can bump into and hook the winch onto
+const SOFT = new Map(); function addSoft(x, z, r) { const k = Math.floor(x / 8) + ',' + Math.floor(z / 8); if (!SOFT.has(k)) SOFT.set(k, []); SOFT.get(k).push({ x, z, r, t: -9, sd: 1 }); }
+function softHit(nx, nz, sY, cY, dt) { let ox = 0, oz = 0; if (CH.ghost || CH.heli || S.y - S.ground > .8) return [0, 0]; const HL = (CAR.wb || 2.5) / 2 + .45, cx = Math.floor(nx / 8), cz = Math.floor(nz / 8), av = Math.abs(S.v);
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = SOFT.get((cx + i) + ',' + (cz + j)); if (!L) continue; for (const t of L) { const rx = t.x - nx, rz = t.z - nz, u = rx * sY + rz * cY, lat = rx * cY - rz * sY, R = t.r + .8; if (Math.abs(u) > HL + t.r * .5 || Math.abs(lat) >= R) continue;
+    if (clock - t.t > .6) { t.sd = Math.abs(lat) > .12 ? Math.sign(lat) : (Math.random() < .5 ? 1 : -1); if (av > 1.2) { play('rustle', av); rumble(90, Math.min(.7, av / 14)); S.v *= .9; S.vy += Math.min(1.4, av * .12); } } t.t = clock;
+    const k = (1 - Math.abs(lat) / R) * .6 + .4, sh = -t.sd * Math.min(R - Math.abs(lat) + .02, (1.6 + av * .45) * k * dt); ox += cY * sh; oz -= sY * sh; S.yaw -= t.sd * .5 * Math.min(1, av / 6) * Math.sign(S.v || 1) * k * dt; S.v *= 1 - .7 * dt; } }
+  return [ox, oz]; }
 const BUMPS = new Map(), BG = 8; function addBump(x, z, r, h) { const k = Math.floor(x / BG) + ',' + Math.floor(z / BG); if (!BUMPS.has(k)) BUMPS.set(k, []); BUMPS.get(k).push({ x, z, r, h }); }
 function bumpAt(x, z) { const cx = Math.floor(x / BG), cz = Math.floor(z / BG); let h = 0; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = BUMPS.get((cx + i) + ',' + (cz + j)); if (!L) continue;
   for (const b of L) { const dx = x - b.x, dz = z - b.z, d2 = dx * dx + dz * dz; if (d2 < b.r * b.r) h = Math.max(h, b.h * Math.sqrt(1 - d2 / (b.r * b.r))); } } return h; }
@@ -1615,12 +1621,12 @@ function caveFrame(dt) { jungleK += (jungleAt(S.x, S.z) * (1 - .9 * sstep(12, 30
   for (let n = 0; n < 40000 * AR && reeds.length < 1000 * AR; n++) { const x = (rnd() * 2 - 1) * (HALF - 20), z = (rnd() * 2 - 1) * (HALF - 20), h = heightAt(x, z);
     if (h < -.25 || h > .9 || caveNear(x, z, 0)) continue; reeds.push({ x, z, y: Math.max(h, -.1), s: .8 + rnd() * .9, ry: rnd() * 6.28 }); }
   for (let n = 0; n < 3000 * AR && logs.length < 80 * AR; n++) { const x = (rnd() * 2 - 1) * (HALF - 60), z = (rnd() * 2 - 1) * (HALF - 60), h = heightAt(x, z);
-    if (biome(x, z) > .4 || h < 3 || forestAt(x, z) < .5 || surfaceAt(x, z) !== 0 || slopeAt(x, z) > .25) continue; logs.push({ x, z, y: h, s: .8 + rnd() * .5, ry: rnd() * 6.28 }); }
+    if (biome(x, z) > .4 || h < 3 || forestAt(x, z) < .5 || surfaceAt(x, z) !== 0 || slopeAt(x, z) > .25) continue; logs.push({ x, z, y: h, s: .8 + rnd() * .5, ry: rnd() * 6.28 }); addBump(x, z, .75 * logs[logs.length - 1].s, .26 * logs[logs.length - 1].s); }
   [natLeafMat, natLeafMat.userData.depth, natRockMat, natWoodMat, treeMat, rockMat, vcMat].forEach((m, i) => vegFade(m, 'v' + i)); [butte, spire, mesa, boulder].forEach(weld); [pine, oak, birch, palm, bush].forEach(leafy);
   const part = (l, k, n) => l.filter((_, i) => i % n === k), use = (names, list, old, mat, omat, cast, tag, far) => { if (!NATON) { scatter(old, list, omat, cast, tag, far); return; } names.forEach((nm, k) => { const gg = natGeo(NAT[nm]); gg.userData.nat = nm; if (/^boulder/.test(nm) && NAT.pebble) gg.userData.lo = natGeo(NAT.pebble); scatter(gg, part(list, k, names.length), mat, cast, tag, far); }); };
   scatter(butte, forms[0], rockMat, true); scatter(spire, forms[1], rockMat, true); scatter(mesa, forms[2], rockMat, true); use(['boulderA', 'boulderB', 'boulderC'], boulders, boulder, natRockMat, rockMat, true);
   use(['fir', 'pine', 'tallpine', 'fir'], P[0], pine, natLeafMat, treeMat, true, 'pine'); use(['oak', 'oak2'], P[1], oak, natLeafMat, treeMat, true, 'leaf'); use(['birch'], P[2], birch, natLeafMat, treeMat, true, 'leaf'); use(['palm'], P[3], palm, natLeafMat, treeMat, true);
-  use(['shrub', 'coto'], bushes, bush, natLeafMat, treeMat, false, 'bush'); const reedMat = vcMat.clone(); reedMat.userData = vcMat.userData; reedMat.onBeforeCompile = (sh, r) => { if (vcMat.onBeforeCompile) vcMat.onBeforeCompile(sh, r); sh.uniforms.uTime = timeU; sh.uniforms.uWind = windU; sh.uniforms.uCar = CARU;
+  for (const b of bushes) addSoft(b.x, b.z, .3 + .22 * b.s); use(['shrub', 'coto'], bushes, bush, natLeafMat, treeMat, false, 'bush'); const reedMat = vcMat.clone(); reedMat.userData = vcMat.userData; reedMat.onBeforeCompile = (sh, r) => { if (vcMat.onBeforeCompile) vcMat.onBeforeCompile(sh, r); sh.uniforms.uTime = timeU; sh.uniforms.uWind = windU; sh.uniforms.uCar = CARU;
     sh.vertexShader = 'uniform float uTime; uniform float uWind; uniform vec4 uCar;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef USE_INSTANCING\n { vec3 ip = instanceMatrix[3].xyz; vec2 cq = ip.xz - uCar.xy; float d = length(cq), sp = min(1.0, uCar.z / 5.0 + .2), k = (1.0 - smoothstep(1.0, 5.0, d)) * sp, hg = max(transformed.y, 0.0);'
       + ' float sw = sin(uTime * 1.6 + ip.x * .37 + ip.z * .29) * (.05 + .05 * min(uWind, 2.0)) + sin(uTime * 2.9 + ip.z * .8) * .025 * uWind, wob = sin(uTime * 9.0 + ip.x * 3.1 + d * 2.0) * .14 * k;'
       + ' vec3 wd = vec3(cq.x, 0.0, cq.y) / max(d, .01); float s2 = max(dot(instanceMatrix[0].xyz, instanceMatrix[0].xyz), 1e-4); vec2 ld = vec2(dot(instanceMatrix[0].xyz, wd), dot(instanceMatrix[2].xyz, wd)) / s2;'
@@ -3081,7 +3087,7 @@ function hit(type, fc, q, dur, vol, o) { if (!A.ctx) return; o = o || {}; const 
   s.start(t, Math.random() * 1.5); s.stop(t + dur + .05); }
 function bell(m, at, vel, o) { const f = mtof(m), b = Object.assign({ at, rev: .6 }, o || {});
   tone('sine', f, f, 1.7, vel, b); tone('sine', f * 2.76, f * 2.76, .9, vel * .22, b); tone('sine', f * 5.4, f * 5.4, .35, vel * .04, b); }
-let thudCool = 0, bumpCool = 0, scrapeCool = 0, landCool = 0;
+let stoneAt = 0, sfxAt = 0; let thudCool = 0, bumpCool = 0, scrapeCool = 0, landCool = 0;
 const sfx = {
   click() { tone('sine', 520, 380, .07, .1); hit('lowpass', 1400, .7, .04, .07); },
   tick() { tone('sine', 880, 700, .07, .07); },
@@ -3230,7 +3236,11 @@ function audioFrame(dt, campDist) { audioWatch(dt); if (!A.ctx || A.ctx.state !=
   engineFrame(dt, gas, spd); vehicleFrame(dt, gas, spd); ambientFrame(dt, spd, campDist); }
 function audioLevel() { if (!A.an) return null; const d = new Float32Array(A.an.fftSize); A.an.getFloatTimeDomainData(d); let s = 0, pk = 0; for (const v of d) { s += v * v; pk = Math.max(pk, Math.abs(v)); }
   return { rms: Math.sqrt(s / d.length), peak: pk, state: A.ctx.state }; }
-function play(name, arg) { if (A.ctx && A.ctx.state === 'running') { try { sfx[name](arg); } catch (e) {} } }
+function play(name, arg) { sfxAt = performance.now(); if (A.ctx && A.ctx.state === 'running') { try { sfx[name](arg); } catch (e) {} } }
+sfx.stone = v => { tone('sine', 88, 46, .13, Math.min(.3, .08 + v * .5)); hit('bandpass', 1700 + Math.random() * 600, 2.2, .04, Math.min(.16, .04 + v * .25)); hit('lowpass', 300, .7, .09, .1 + v * .2); };
+sfx.rustle = v => { const k = Math.min(1, v / 10); hit('highpass', 2400, .5, .32, .1 * (.5 + k), { a: .02 }); hit('bandpass', 5200, .9, .22, .07 * (.4 + k), { at: .05, a: .03 }); hit('bandpass', 700, 2.5, .09, .16 * (.3 + k)); tone('triangle', 150, 95, .1, .06 + k * .08); };
+sfx.pop = () => { const f = 90 + Math.random() * 50; tone('square', f * 2, f, .07, .09); hit('bandpass', 1100 + Math.random() * 500, 1.2, .07, .2); hit('lowpass', 380, .8, .14, .22); };
+document.addEventListener('click', e => { const b = e.target && e.target.closest && e.target.closest('button, .mb, [role=button], input[type=range]'); if (b) setTimeout(() => { if (performance.now() - sfxAt > 120) play('tick'); }, 0); }, true);
 { const W = [['wRain', 'rain'], ['wSnow', 'snow'], ['wWind', 'wind'], ['wFog', 'fog'], ['wThun', 'thunder']], keep = () => { try { localStorage.setItem('mini-slowtrail-wx', JSON.stringify(wxc)); } catch (e) {} };
   const show = () => { $('bWx').textContent = 'Weather: ' + (wxc.custom ? 'Custom' : 'Seasonal') + ($('wxBox').classList.contains('open') ? ' \u25b4' : ' \u25be'); $('bWxS').classList.toggle('show', wxc.custom); W.forEach(q => { $(q[0]).value = Math.round(wxc[q[1]] * 100); }); };
   $('bWx').addEventListener('click', () => { $('wxBox').classList.toggle('open'); show(); play('click'); });
@@ -3268,7 +3278,7 @@ const CLIMB = { Ranger: [0, 1], Hauler: [0, 1], Scout: [0, .7], Thunderbolt: [0,
 function climbK(pitch, loose) { const c = CLIMB[CAR.name] || [0, 1], up = clamp(pitch / .4, 0, 1), wet = Math.min(1, wx.rain * 1.5), st = Math.min(1, Math.abs(S.steer) / .35); let k = 1 - (1 - c[1]) * .62 * sstep(.08, .34, pitch); if (c[1] >= .9) k *= 1 + .3 * up; if (c[0] === 1) k *= 1 - up * (.45 + .3 * wet + .2 * (loose ? 1 : 0) + .2 * st); else if (c[0] === 2) k *= 1 + .1 * up - .12 * up * st * (wet + (loose ? .6 : 0)); return Math.max(.18, k); }
 function offR() { if (!CAR) return 1; const v = OFFR[CAR.name]; return v === undefined ? (CAR.wr > .44 ? 1 : CAR.wr > .37 ? .6 : .2) : v; }
 // what a wheel feels under it: loose stones, and on rough ground a bumpy surface that street suspension can't soak up
-function wheelBump(x, z, ofr) { let b = bumpAt(x, z); const clear = lerp(.16, .5, ofr);
+function wheelBump(x, z, ofr) { let b = bumpAt(x, z); const clear = lerp(.16, .5, ofr); if (b > .05 && Math.abs(S.v) > 1 && clock > stoneAt) { stoneAt = clock + .2; play('stone', Math.min(1, b * 1.6) * Math.min(1, Math.abs(S.v) / 8)); rumble(60, Math.min(.6, b)); }
   if (b > clear) { S.scrapeK = Math.max(S.scrapeK, Math.min(1, (b - clear) * 4) * Math.min(1, Math.abs(S.v) / 2)); if (Math.abs(S.v) > 1.2) play('scrape', Math.abs(S.v) * .8); }
   b *= lerp(1.1, 1.25, ofr);
   if (S.surf < 5 && S.surf !== undefined) { const sp = Math.min(1, Math.abs(S.v) / 7), amp = lerp(.15, .05, ofr) * sp * (S.surf === 2 ? 1.5 : S.surf === 1 ? .6 : 1);
@@ -3296,7 +3306,7 @@ function step(dt) { if (vista) { S.v = 0; return; } if (CH.heli) { heliStep(dt);
   // diff lock: if the wheels can't find grip for a moment, the truck crawls itself out
   const push = gas > .5 ? 1 : (rvI > .5 && S.v < .6 ? -1 : 0);
   if (push && Math.abs(S.v) < .7 && !S.winch) S.stuck = (S.stuck || 0) + dt; else if (!push || Math.abs(S.v) > 1.6) S.stuck = 0;
-  { const cl = (CLIMB[CAR.name] || [0, 1])[1], ck = pitch * push > .1 ? (cl >= .9 ? 1 : cl >= .5 ? .45 : 0) : 1; if (S.stuck > 1.1 && push && S.v * push < 2.2) { if (ck > 0) { S.v += push * lerp(2.4, 7.5, ofr) * ck * dt; S.spin = false; if (!S.assistMsg && cl >= .9) { S.assistMsg = true; toast('Diff lock engaged — crawling out', 2.5); } } else if (!(S.spinMsg > clock)) { S.spinMsg = clock + 25; toast('Wheels spinning — too steep for this car', 2.5); } } }
+  { const cl = (CLIMB[CAR.name] || [0, 1])[1], ck = pitch * push > .1 ? (cl >= .9 ? 1 : cl >= .5 ? .45 : 0) : 1; if (S.stuck > 1.1 && push && S.v * push < 2.2) { if (ck > 0) { S.v += push * lerp(2.4, 7.5, ofr) * ck * dt; S.spin = false; if (!S.assistMsg && cl >= .9) { S.assistMsg = true; toast('Diff lock engaged — crawling out', 2.5); play('range', true); } } else if (!(S.spinMsg > clock)) { S.spinMsg = clock + 25; toast('Wheels spinning — too steep for this car', 2.5); play('deny'); } } }
   if (S.winch) { const dx = S.winch.x - S.x, dz = S.winch.z - S.z, dc = Math.hypot(dx, dz), d = dc - S.winch.r;
     if (d < 3.6 || d > 40) { S.winch = null; play('unhook'); if (d < 3.6) toast('Winch released', 1.2); }
     else if (gas > .2) { const along = (dx * sY + dz * cY) / dc; if (S.v * Math.sign(along) < 1.8) S.v += 14 * along * dt;
@@ -3313,14 +3323,15 @@ function step(dt) { if (vista) { S.v = 0; return; } if (CH.heli) { heliStep(dt);
   S.dk = Math.max(0, (S.dk || 0) - dt * 1.5); if (CH.drift && !drifting && S.v > 9 && gas > .8 && Math.abs(steerIn) > .7) { const sg = Math.sign(steerIn); S.dk = Math.min(1, S.dk + dt * 4.5 * clamp((Math.abs(steerIn) - .7) / .3, .2, 1)); S.vlat -= sg * Math.min(9, S.v) * .66 * gas * dt * S.dk; S.yaw -= sg * 1.05 * gas * Math.min(1, S.v / 9) * dt * S.dk; drifting = true; S.spin = true; }
   S.vlat *= Math.exp(-(drifting ? 1.1 : Math.abs(gL) > lim ? 1.5 : 9) * dt);
   let nx = S.x + (sY * S.v - cY * S.vlat) * dt, nz = S.z + (cY * S.v + sY * S.vlat) * dt;
-  const HL = Math.max(.6, (CAR.wb || 2.5) / 2 + .45); nearSolids(nx, nz, t => { if (CH.ghost) return; if (t.rock && S.y - t.h > t.r * 1.3 + 1.2) return; if (t.rock && ((ofr > .75 && t.r < 2.2 && Math.abs(S.v) < 9) || (ofr > .45 && t.r < 1.05))) return; const k = clamp((t.x - nx) * sY + (t.z - nz) * cY, -HL, HL), px = nx + sY * k, pz = nz + cY * k, dx = px - t.x, dz = pz - t.z, d = Math.hypot(dx, dz), R = t.r + .82;
+  const HL = Math.max(.6, (CAR.wb || 2.5) / 2 + .45); nearSolids(nx, nz, t => { if (CH.ghost) return; if (t.rock && S.y - t.h > t.r * 1.3 + 1.2) return; if (t.rock && (t.r < 1.05 || (ofr > .75 && t.r < 2.2 && Math.abs(S.v) < 9))) return; const k = clamp((t.x - nx) * sY + (t.z - nz) * cY, -HL, HL), px = nx + sY * k, pz = nz + cY * k, dx = px - t.x, dz = pz - t.z, d = Math.hypot(dx, dz), R = t.r + .82;
     if (d < R && d > 1e-3) { const ux = dx / d, uz = dz / d, dir = Math.sign(S.v) || 1, head = -(ux * sY + uz * cY) * dir;      // 1: straight at it, 0: brushing past
       nx += ux * (R - d); nz += uz * (R - d);
       const hk = t.rock ? 'rockHit' : t.top - t.h > 3 ? 'treeHit' : 'thud', av = Math.abs(S.v);
       if (head <= .15 && av > 3) play('scrape', av * .7);
-      if (head > .15) { if (av > 5 && head > .6) { rumble(140, Math.min(1, av / 10)); play(hk, av); S.v *= .55; } else if (av > 1.6 && head > .4) play(hk, av * .45); else if (av > 3) play('scrape', av);
+      if (head > .15) { if (av > 5 && head > .6) { rumble(140, Math.min(1, av / 10)); play(hk, av); S.v *= .3; } else if (av > 1.6 && head > .4) play(hk, av * .45); else if (av > 3) play('scrape', av);
         S.v *= Math.max(0, 1 - head * 5 * dt);
         S.yaw += ((ux * cY - uz * sY) >= 0 ? 1 : -1) * dir * head * 1.5 * dt; } } });                                           // nose swings away, so the truck slides round
+  { const sh = softHit(nx, nz, sY, cY, dt); nx += sh[0]; nz += sh[1]; }
   S.x = clamp(nx, -HALF + 8, HALF - 8); S.z = clamp(nz, -HALF + 8, HALF - 8);
   if (depth > 1.35 && !S.flooded) { play('glug'); fadeTo('Too deep! Towed back to ' + camps[S.lastCamp].name, () => placeAtCamp(S.lastCamp)); }
 }
@@ -3514,7 +3525,7 @@ root.classList.add('painted');   // the pixel-art HUD is used in every look
     'float ld(vec2 uv){ float d = texture2D(z, uv).x; return f.x * f.y / (f.y - d * (f.y - f.x)); }' +
     'float b2(vec2 p){ p = floor(mod(p, 2.0)); return mod(2.0 * p.x + 3.0 * p.y, 4.0); }' +
     'float bay(vec2 p){ return (4.0 * b2(p) + b2(floor(p * 0.5))) / 16.0; }' +
-    'void main(){ vec2 px = 1.0 / res; bool inM = mr.z > mr.x && vUv.x > mr.x && vUv.x < mr.z && vUv.y > mr.y && vUv.y < mr.w; vec4 mk = vec4(0.0); if (mfs > 3.5 && mr.z > mr.x) { vec2 fu = (vUv - mfr.xy) / (mfr.zw - mfr.xy); if (fu.x > 0.0 && fu.x < 1.0 && fu.y > 0.0 && fu.y < 1.0) mk = texture2D(mft, fu); inM = inM && mk.g > 0.5; } vec4 c4 = inM ? vec4(texture2D(tmr, vec2(1.0 - (vUv.x - mr.x) / (mr.z - mr.x), (vUv.y - mr.y) / (mr.w - mr.y))).rgb, 1.0) : texture2D(t, vUv); vec3 c = c4.rgb; float okM = 0.0; if (!inM) { vec2 px = 1.0 / res; vec3 av = (texture2D(t, vUv + vec2(px.x, 0.0)).rgb + texture2D(t, vUv - vec2(px.x, 0.0)).rgb + texture2D(t, vUv + vec2(0.0, px.y)).rgb + texture2D(t, vUv - vec2(0.0, px.y)).rgb) * 0.25; okM = smoothstep(0.04, 0.14, dot(av - c, vec3(0.3, 0.59, 0.11))); c = clamp(c + (c - av) * 0.7, 0.0, 1.0); } bool car = c4.a > 0.4 && c4.a < 0.6; float cy = dot(c, vec3(0.3, 0.59, 0.11)); c *= car ? mix(1.0, 0.8, smoothstep(0.22, 0.62, cy)) : mix(0.94, 0.68, smoothstep(0.16, 0.6, cy)); float d0 = ld(vUv);' +
+    'void main(){ vec2 px = 1.0 / res; bool inM = mr.z > mr.x && vUv.x > mr.x && vUv.x < mr.z && vUv.y > mr.y && vUv.y < mr.w; vec4 mk = vec4(0.0); if (mfs > 3.5 && mr.z > mr.x) { vec2 fu = (vUv - mfr.xy) / (mfr.zw - mfr.xy); if (fu.x > 0.0 && fu.x < 1.0 && fu.y > 0.0 && fu.y < 1.0) mk = texture2D(mft, fu); inM = inM && mk.g > 0.5; } vec4 c4 = inM ? vec4(texture2D(tmr, vec2(1.0 - (vUv.x - mr.x) / (mr.z - mr.x), (vUv.y - mr.y) / (mr.w - mr.y))).rgb, 1.0) : texture2D(t, vUv); vec3 c = c4.rgb; float okM = 0.0; if (!inM) { vec2 px = 1.0 / res; vec3 av = (texture2D(t, vUv + vec2(px.x, 0.0)).rgb + texture2D(t, vUv - vec2(px.x, 0.0)).rgb + texture2D(t, vUv + vec2(0.0, px.y)).rgb + texture2D(t, vUv - vec2(0.0, px.y)).rgb) * 0.25; okM = smoothstep(0.04, 0.14, dot(av - c, vec3(0.3, 0.59, 0.11))); c = clamp(c + vec3(dot(c - av, vec3(0.3, 0.59, 0.11)) * 0.7), 0.0, 1.0); } bool car = c4.a > 0.4 && c4.a < 0.6; float cy = dot(c, vec3(0.3, 0.59, 0.11)); c *= car ? mix(1.0, 0.8, smoothstep(0.22, 0.62, cy)) : mix(0.94, 0.68, smoothstep(0.16, 0.6, cy)); float d0 = ld(vUv);' +
     ' float dn = min(min(ld(vUv + vec2(px.x, 0.0)), ld(vUv - vec2(px.x, 0.0))), min(ld(vUv + vec2(0.0, px.y)), ld(vUv - vec2(0.0, px.y))));' +
     ' bool ed = d0 - dn > max(0.4, d0 * 0.09) && dn < 350.0 && !inM;' +
     ' {' +
@@ -3974,7 +3985,7 @@ vec4 vor(vec3 x) { vec3 n = floor(x), f = fract(x); float d1 = 8., d2 = 8.; vec3
       clips[c.name] = new THREE.AnimationClip(c.name, c.dur, tr); }
     if (!clips.Idle_Headlow && clips.Idle_2_HeadLow) clips.Idle_Headlow = clips.Idle_2_HeadLow;
     const al = (n, f) => { if (!clips[n] && clips[f]) { clips[n] = clips[f].clone(); clips[n].name = n; } };   // models with fewer clips borrow the nearest one
-    al('Gallop', 'Walk'); al('Eating', 'Idle'); al('Idle_2', 'Idle'); al('Idle_Headlow', 'Idle');
+    if (kind === 'giraffe' && clips.Idle) { const Q = THREE.Quaternion, rest = n => new Q().fromArray(m.nodes.find(x => x.n === n).r), tk = (c, n) => c.tracks.find(t => t.name === san(n) + '.quaternion'); for (const sd of ['L', 'R']) { const fn = 'DEF-forefoot.' + sd, tn = 'DEF-f_toe.' + sd, f0 = tk(clips.Idle, fn), t0 = tk(clips.Idle, tn); if (!f0 || !t0) continue; const Di = new Q().fromArray(f0.values).invert().multiply(rest(fn)), Li = rest(tn).multiply(new Q().fromArray(t0.values).invert()), q = new Q(); for (const cn in clips) for (const [n, M, left] of [[fn, Di, 0], [tn, Li, 1]]) { const tr = tk(clips[cn], n); if (!tr) continue; for (let i = 0; i < tr.values.length; i += 4) { q.fromArray(tr.values, i); if (left) q.premultiply(M); else q.multiply(M); q.toArray(tr.values, i); } } for (const cn in clips) for (const bn of ['upper_arm', 'forearm', 'forefoot']) { const tr = clips[cn].tracks.find(t => t.name === san('DEF-' + bn + '.' + sd) + '.scale'); if (tr) tr.values.fill(1); } } } al('Gallop', 'Walk'); al('Eating', 'Idle'); al('Idle_2', 'Idle'); al('Idle_Headlow', 'Idle');
     return lib[kind] = { m, meshes, isJ, clips, fit: null, mat: m.pat === 'coat' ? coatMat() : null }; }
   // one animal: its own bones and mixer, shared geometry. Faces +Z, feet on y = 0, H metres tall
   function make(kind, H, tint) { const L = prep(kind); if (!L) return null; const objs = L.m.nodes.map((n, i) => { const o = L.isJ.has(i) ? new THREE.Bone() : new THREE.Object3D(); o.name = san(n.n); o.position.fromArray(n.t); o.quaternion.fromArray(n.r); o.scale.fromArray(n.s); return o; });
@@ -4053,9 +4064,9 @@ let stillT = 0, hornAt = -1e9; const animalSites = [];
     const kinds = p.name === 'Emerald Falls' ? ['jaguar', 'ibis'] : p.name === 'Jungle Heart' ? ['parrot'] : p.name === 'Jungle Camp' ? ['monkey'] : jungleAt(p.x, p.z) > .35 ? [['elephant', 'monkey', 'parrot', 'ibis'][i % 4]]
       : p.kind === 'lighthouse' || p.kind === 'jetty' || low < -.3 ? ['gull'] : p.kind === 'cave' ? ['rabbit', 'fox'] : biome(p.x, p.z) > .5 ? (i % 3 ? ['ibex'] : ['ibex', 'wolf']) : i % 2 ? (i % 4 === 1 ? ['rabbit', 'fox'] : ['rabbit']) : i % 6 === 0 ? ['wolf'] : ['deer'];
     return { x: p.x, z: p.z, R: p.R, kinds, tight: p.name === 'Jungle Heart' }; });
-  { const herd = (kind, n, ok) => { for (let c = 0, t = 0; c < n && t < 900; t++) { const P = places[(ar() * places.length) | 0], a = ar() * 6.283, r = 50 + ar() * 150, x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r;
-      if (heightAt(x, z) > 1.8 && slopeAt(x, z, 8) < .2 && jungleAt(x, z) < .05 && !caveNear(x, z, 0) && ok(biome(x, z)) && !spots.some(s => Math.hypot(s.x - x, s.z - z) < 75)) { spots.push({ x, z, R: 6, kinds: [kind] }); c++; } } };
-    herd('horse', 4, b => b < .35); herd('giraffe', 3, b => b > .45 && b < .92); }
+  { const herd = (kind, n, ok) => { for (let c = 0, t = 0; c < n && t < 900; t++) { const P = places[(ar() * places.length) | 0], a = ar() * 6.283, r = 45 + ar() * 210, x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r;
+      if (heightAt(x, z) > 1.8 && slopeAt(x, z, 8) < .2 && jungleAt(x, z) < .05 && !caveNear(x, z, 0) && ok(biome(x, z)) && !spots.some(s => Math.hypot(s.x - x, s.z - z) < 55)) { spots.push({ x, z, R: 6, kinds: [kind] }); c++; } } };
+    herd('horse', 7, b => b < .35); herd('giraffe', 6, b => b > .45 && b < .92); herd('deer', 7, b => b < .4); herd('rabbit', 6, b => b < .5); herd('fox', 4, b => b < .45); herd('ibex', 6, b => b > .5); herd('wolf', 3, b => true); }
   if (jungle) for (const kind of ['elephant', 'ibis', 'monkey', 'elephant', 'parrot', 'monkey']) for (let t = 0; t < 60; t++) { const a = ar() * 6.283, r = Math.sqrt(ar()) * jungle.r * .8, x = jungle.x + Math.sin(a) * r, z = jungle.z + Math.cos(a) * r;
     if (heightAt(x, z) > 1.6 && slopeAt(x, z, 8) < .25 && !spots.some(s => Math.hypot(s.x - x, s.z - z) < 90)) { spots.push({ x, z, R: 6, kinds: [kind] }); break; } }
   for (const P of spots) { const site = { x: P.x, z: P.z, on: true, list: [] };
@@ -4781,7 +4792,7 @@ function moonFrame(dt) { const want = CH.supermoon ? 1 : 0, night = typeof E !==
     if (seen && MOON.first) { MOON.first = false; if (destManual) autoDest(); toast('Look south-west: the supermoon is rising over the sea', 4); }
     if (!seen) MOON.first = false;
     if (seen && MOON.told && Math.hypot((dest || {}).x - S.x || 0, (dest || {}).z - S.z || 0) < 40) { toast('There it is — the supermoon over the sea', 4); MOON.told = false; } } }
-window.__dbg = { MP, VMD, SIREN_PTS, CH, POL, MIRR }; 
+window.__dbg = { animalSites, A3D, SOFT, solids, BUMPS, MP, VMD, SIREN_PTS, CH, POL, MIRR }; 
 /* ---------- mini version: only pictures stand on the ground ---------- */
 { const mk = (g, cap) => { const sb = sprBoard(null, 900, { g, w: 1, h: 1 }), m = new THREE.InstancedMesh(sb.geo, sb.mat, cap); m.frustumCulled = false; m.setColorAt(0, new THREE.Color(1, 1, 1)); m.count = 0; m.__mini = 1; scene.add(m); return m; };
   const P = {}, CAP = { joshua: 420, cactus: 420, stump: 700, fence: 200, sign: 60, mapboard: 60, tent: 60, flag: 120, bench: 60 }; for (const g of ['stump', 'fence', 'sign', 'mapboard', 'pavilion', 'cabin', 'bigtent', 'tower', 'tent', 'lantern', 'pot', 'fire', 'bench', 'pile', 'flag', 'gate', 'lamp', 'marker', 'lighthouse', 'cairn', 'arch', 'jettyb', 'viewpoint', 'startg', 'finishg', 'tyres', 'joshua', 'cactus', 'hiker', 'fallw', 'fallt', 'cavem']) P[g] = mk(g, CAP[g] || 30);
@@ -4789,10 +4800,10 @@ window.__dbg = { MP, VMD, SIREN_PTS, CH, POL, MIRR };
   const put = (k, x, z, s) => { const m = P[k]; if (m.count >= m.instanceMatrix.count) return; v.set(x, heightAt(x, z) - .03, z); sc.set(s, s, s); mm.compose(v, q, sc); m.setMatrixAt(m.count, mm); m.setColorAt(m.count, W); m.count++; };
   // camps: the game's own 3D camp models are kept (the owner did not like the camp sprites)
   // sights and the rally gates keep the game's own 3D models (sprites looked wrong when standing next to them)
-  const rg = mulberry32(4711); for (let n = 0; n < 60000 && P.stump.count < 700; n++) { const x = (rg() * 2 - 1) * HALF * .95, z = (rg() * 2 - 1) * HALF * .95; if (heightAt(x, z) < 1.5 || forestAt(x, z) < .45 || trailAt(x, z) > .05 || roadAt(x, z) > .02 || slopeAt(x, z) > .5) continue; put('stump', x, z, .6 + rg() * .5); }
+  const rg = mulberry32(4711); for (let n = 0; n < 60000 && P.stump.count < 700; n++) { const x = (rg() * 2 - 1) * HALF * .95, z = (rg() * 2 - 1) * HALF * .95; if (heightAt(x, z) < 1.5 || forestAt(x, z) < .45 || trailAt(x, z) > .05 || roadAt(x, z) > .02 || slopeAt(x, z) > .5) continue; { const s = .6 + rg() * .5; put('stump', x, z, s); addBump(x, z, .5 * s, .3 * s); } }
   // the desert gets Joshua trees and cacti
   { const rd = mulberry32(9133); for (let n = 0; n < 90000 && P.joshua.count + P.cactus.count < 800; n++) { const x = (rd() * 2 - 1) * HALF * .95, z = (rd() * 2 - 1) * HALF * .95; if (biome(x, z) < .85 || jungleAt(x, z) > 0 || heightAt(x, z) < 2.2 || trailAt(x, z) > .05 || roadAt(x, z) > .02 || slopeAt(x, z) > .3 || Math.abs(x - riverX(z)) < 30) continue;
-      let ok = true; for (const c of camps) if (Math.hypot(x - c.x, z - c.z) < 24) ok = false; if (!ok) continue; if (rd() < .5) put('joshua', x, z, 3.6 + rd() * 2.4); else put('cactus', x, z, 1.6 + rd() * 2.6); } }
+      let ok = true; for (const c of camps) if (Math.hypot(x - c.x, z - c.z) < 24) ok = false; if (!ok) continue; if (rd() < .5) { const s = 3.6 + rd() * 2.4; put('joshua', x, z, s); addSolid({ x, z, h: heightAt(x, z), r: .4, top: heightAt(x, z) + s * .8, tree: 1, ts: s / 9 }); } else { const s = 1.6 + rd() * 2.6; put('cactus', x, z, s); if (s > 2.8) addSolid({ x, z, h: heightAt(x, z), r: .35, top: heightAt(x, z) + s * .8, tree: 1, ts: s / 9 }); else addSoft(x, z, .3); } } }
   for (const k in P) { P[k].instanceMatrix.needsUpdate = true; P[k].instanceColor.needsUpdate = true; }
   // hide the 3D props. Kept: the ground, water, roads, the bridge, the sky, sprites, the car, lights, glows and markers.
   const bx = new THREE.Box3(), sz = new THREE.Vector3(), ct = new THREE.Vector3(), im4 = new THREE.Matrix4();
