@@ -3268,8 +3268,8 @@ function offR() { if (!CAR) return 1; const v = OFFR[CAR.name]; return v === und
 // what a wheel feels under it: loose stones, and on rough ground a bumpy surface that street suspension can't soak up
 function wheelBump(x, z, ofr) { let b = bumpAt(x, z); const clear = lerp(.16, .5, ofr);
   if (b > clear) { S.scrapeK = Math.max(S.scrapeK, Math.min(1, (b - clear) * 4) * Math.min(1, Math.abs(S.v) / 2)); if (Math.abs(S.v) > 1.2) play('scrape', Math.abs(S.v) * .8); }
-  b *= lerp(.85, 1, ofr);
-  if (S.surf < 5 && S.surf !== undefined) { const sp = Math.min(1, Math.abs(S.v) / 7), amp = lerp(.105, .034, ofr) * sp * (S.surf === 2 ? 1.5 : S.surf === 1 ? .6 : 1);
+  b *= lerp(1.1, 1.25, ofr);
+  if (S.surf < 5 && S.surf !== undefined) { const sp = Math.min(1, Math.abs(S.v) / 7), amp = lerp(.15, .05, ofr) * sp * (S.surf === 2 ? 1.5 : S.surf === 1 ? .6 : 1);
     b += (vnoise(x * .9 + 11, z * .9 - 7) - .5) * amp + (vnoise(x * 2.3, z * 2.3) - .5) * amp * .45; }
   return b; }
 function step(dt) { if (vista) { S.v = 0; return; } if (CH.heli) { heliStep(dt); return; } if (CH.noclip) { S.v = S.vlat = 0; return; } apFrame(dt);          // parked while you look around
@@ -3341,9 +3341,9 @@ function tick(now) { fpsFrame(now); pf.f = (pf.f || 0) + 1; pf.calls += renderer
   if (S.started && autoQ && raw < .5) { warm += raw; if (warm > 3) { fpsN++; fpsT += raw; if (fpsT > 2.5) { if (fpsN / fpsT < 38 && autoI < AUTOL.length - 1) { autoI++; setQuality(AUTOL[autoI][0], AUTOL[autoI][1]); warm = 0; } fpsN = 0; fpsT = 0; } } }
 
   // body: soft spring to the ground, squat under power, lean in corners
-  if (!CH.heli) { const air0 = S.y - S.ground > .12; if (air0) S.vyMin = Math.min(S.vyMin || 0, S.vy); else { if (S.wasAir && (S.vyMin || 0) < -4) play('land', -S.vyMin); S.vyMin = 0; } S.wasAir = air0; if (S.y - S.ground > .1) S.vy -= (CH.moon ? 2.6 : S.vy < 0 ? 30 : 24) * dt; else S.vy += ((S.ground - S.y) * 72 - S.vy * 10) * dt; S.y += S.vy * dt; if (S.y < S.ground - .25) { S.y = S.ground - .25; S.vy = 0; } }
+  if (!CH.heli) { const air0 = S.y - S.ground > .12; if (air0) S.vyMin = Math.min(S.vyMin || 0, S.vy); else { if (S.wasAir && (S.vyMin || 0) < -4) play('land', -S.vyMin); S.vyMin = 0; } S.wasAir = air0; if (S.y - S.ground > .1) S.vy -= (CH.moon ? 2.6 : S.vy < 0 ? 30 : 24) * dt; else S.vy += ((S.ground - S.y) * 52 - S.vy * 7) * dt; S.y += S.vy * dt; if (S.y < S.ground - .25) { S.y = S.ground - .25; S.vy = 0; } }
   const k = Math.min(1, dt * 9); S.pitch += (S.tPitch - S.pitch) * k; S.roll += (S.tRoll - S.roll) * k;
-  { const ofr = offR(), tgt = clamp(S.acc * lerp(.011, .017, ofr) * (S.y - S.ground > .15 ? 0 : 1), -.072, .072); const pv = S.vpv || 0; S.vpv = pv + ((tgt - visP) * 70 - pv * 7.5) * dt; if (!isFinite(S.vpv) || !isFinite(visP)) { S.vpv = 0; visP = 0; } visP += S.vpv * dt; } visR += (clamp(-S.v * S.v / WHEELBASE * Math.tan(S.steer) * .016, -.105, .105) - visR) * Math.min(1, dt * 5);
+  { const ofr = offR(), tgt = clamp(S.acc * lerp(.016, .024, ofr) * (S.y - S.ground > .15 ? 0 : 1), -.1, .1); const pv = S.vpv || 0; S.vpv = pv + ((tgt - visP) * 46 - pv * 5.2) * dt; if (!isFinite(S.vpv) || !isFinite(visP)) { S.vpv = 0; visP = 0; } visP += S.vpv * dt; } visR += (clamp(-S.v * S.v / WHEELBASE * Math.tan(S.steer) * .022, -.14, .14) - visR) * Math.min(1, dt * 5);
   const vp = S.pitch + visP, vr = S.roll + visR, sY = Math.sin(S.yaw), cY = Math.cos(S.yaw);
   car.position.set(S.x, S.y, S.z); car.rotation.set(-vp, S.yaw, vr); car.updateMatrix(); car.updateMatrixWorld(true);
   const tp = Math.tan(vp), tr = Math.tan(vr), gasNow = S.started ? Math.max(inp.gas, pad.gas, AP.on ? AP.gas : 0) : 0, brkNow = S.started ? Math.max(inp.brake, pad.brake, AP.on ? AP.brake : 0) : 0;
