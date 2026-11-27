@@ -3510,7 +3510,7 @@ root.classList.add('painted');   // the pixel-art HUD is used in every look
     'float ld(vec2 uv){ float d = texture2D(z, uv).x; return f.x * f.y / (f.y - d * (f.y - f.x)); }' +
     'float b2(vec2 p){ p = floor(mod(p, 2.0)); return mod(2.0 * p.x + 3.0 * p.y, 4.0); }' +
     'float bay(vec2 p){ return (4.0 * b2(p) + b2(floor(p * 0.5))) / 16.0; }' +
-    'void main(){ vec2 px = 1.0 / res; vec4 c4 = texture2D(t, vUv); vec3 c = c4.rgb; bool car = c4.a > 0.4 && c4.a < 0.6; float cy = dot(c, vec3(0.3, 0.59, 0.11)); c *= car ? mix(1.0, 0.8, smoothstep(0.22, 0.62, cy)) : mix(0.94, 0.68, smoothstep(0.16, 0.6, cy)); float d0 = ld(vUv);' +
+    'void main(){ vec2 px = 1.0 / res; vec4 c4 = texture2D(t, vUv); vec3 c = c4.rgb; { vec2 px = 1.0 / res; vec3 av = (texture2D(t, vUv + vec2(px.x, 0.0)).rgb + texture2D(t, vUv - vec2(px.x, 0.0)).rgb + texture2D(t, vUv + vec2(0.0, px.y)).rgb + texture2D(t, vUv - vec2(0.0, px.y)).rgb) * 0.25; c = clamp(c + (c - av) * 0.7, 0.0, 1.0); } bool car = c4.a > 0.4 && c4.a < 0.6; float cy = dot(c, vec3(0.3, 0.59, 0.11)); c *= car ? mix(1.0, 0.8, smoothstep(0.22, 0.62, cy)) : mix(0.94, 0.68, smoothstep(0.16, 0.6, cy)); float d0 = ld(vUv);' +
     ' float dn = min(min(ld(vUv + vec2(px.x, 0.0)), ld(vUv - vec2(px.x, 0.0))), min(ld(vUv + vec2(0.0, px.y)), ld(vUv - vec2(0.0, px.y))));' +
     ' bool ed = d0 - dn > max(0.4, d0 * 0.09) && dn < 350.0;' +
     ' {' +
@@ -3588,7 +3588,7 @@ root.classList.add('painted');   // the pixel-art HUD is used in every look
     '   y.x = mix(y.x, yiq(tx(p + vec2(0.6, 0.0))).x, 0.35); c = rgb(y); c += (hash(uv * scr + tm) - 0.5) * 0.08 + band * 0.12; c = c * 0.94 + 0.03; }' +
     ' else if (mode > 8.5 && mode < 9.5) { vec2 p = uv * res; vec3 s0 = scan(p, -7.0, -2.2); vec3 g = vec3(0.0);' +
     '   for (int j = -2; j <= 2; j++) for (int i = -2; i <= 2; i++) { float w = exp(-float(i * i + j * j) * 0.45); g += lin(tx(p + vec2(float(i), float(j)))) * w; } g /= 6.9;' +
-    '   c = gam(mix(lin(tx(p)), s0 * 1.15 + g * 0.55, k)); vec2 q = uv - 0.5; c *= 1.0 - 0.6 * dot(q, q); }' +
+    '   c = gam(mix(lin(tx(p)), s0 * 1.08 + g * 0.26, k)); vec2 q = uv - 0.5; c *= 1.0 - 0.6 * dot(q, q); }' +
     ' else if (mode > 9.5) { vec2 p = uv * res, f = fract(p); c = tx(p); c *= mix(1.0, mix(1.08, 0.5, smoothstep(0.55, 0.9, f.y)), k); }' +
     ' else { vec2 p = uv * res - 0.5, f = fract(p), i0 = floor(p), a = clamp((f - 0.5) * ps + 0.5, 0.0, 1.0);' +
     '   c = mix(mix(tx(i0 + 0.5), tx(i0 + vec2(1.5, 0.5)), a.x), mix(tx(i0 + vec2(0.5, 1.5)), tx(i0 + 1.5), a.x), a.y); }' +
@@ -4800,7 +4800,7 @@ function moonFrame(dt) { const want = CH.supermoon ? 1 : 0, night = typeof E !==
   for (const st of animalSites) for (const a of st.list) a.g.__mini = 1; for (const b of boats) b.m.__mini = 1; for (const b of SEA.boats) b.g.__mini = 1; for (const b of HARB.boats) b.m.__mini = 1;   /* animals and boats stay 3D: sprites of moving things looked like paper cut-outs */
   miniHide(); setInterval(miniHide, 1200); MINI_LATE = true;
   { for (const id of ['bDof', 'bGlow', 'bPsz', 'bPal', 'bScr']) { const e = $(id); if (e) e.style.display = 'none'; } for (const id of ['gR', 'gH']) { const e = $(id); if (e && e.parentElement) e.parentElement.style.display = 'none'; }
-    { const b = document.createElement('button'); b.className = 'mb'; b.type = 'button'; b.id = 'bUpscale'; try { const u = +localStorage.getItem('mini-upscale2'); if (u >= 1 && u <= 3) PIX.up = u; } catch (e) {}
+    { const b = document.createElement('button'); b.className = 'mb'; b.type = 'button'; b.id = 'bUpscale'; try { const u = +localStorage.getItem('mini-upscale2'); if (u >= 1 && u <= 3) PIX.up = u; } catch (e) {} if (!PIX.up) PIX.up = 1.5;   /* default: half as many rows again as the base picture, so surface detail survives */
       const show = () => { b.textContent = 'Upscale: ' + (PIX.up || 1) + '\u00d7'; }; show(); b.addEventListener('click', () => { const u = PIX.up || 1; PIX.up = u >= 3 ? 1 : u + .5; try { localStorage.setItem('mini-upscale2', PIX.up); } catch (e) {} try { play('tick'); } catch (e) {} show(); }); $('bLook').parentElement.appendChild(b); }
     { // the colour cube: for each of 32x32x32 colours, the nearest palette colour (red counts a little less than green, blue least). Rebuilt when the palette is changed.
       const names = ['Full'].concat(Object.keys(PALS)), d = new Uint8Array(1024 * 32 * 3), t = new THREE.DataTexture(d, 1024, 32, THREE.RGBFormat); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; MINILUT.value = t; let cur = 0;
