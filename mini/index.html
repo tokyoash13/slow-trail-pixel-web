@@ -2797,13 +2797,13 @@ const guide = [];
   g.setAttribute('position', new THREE.Float32BufferAttribute([].concat(A, B, D, B, C, D, A, D, F, D, Ee, F), 3));
   for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0x2fd6ff, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false, fog: false }));
     m.scale.setScalar(1.9); m.visible = false; m.frustumCulled = false; m.renderOrder = 2; scene.add(m); guide.push(m); } })();
-function guideFrame() { const show = S.started && !mapOpen && !vista && dest && routePts.length > 1 && routeLen > 28; let acc = 0, seg = 0; const first = 9 + (clock * 5) % 10;
-  for (let i = 0; i < guide.length; i++) { const g = guide[i]; if (!show) { g.visible = false; continue; } const want = first + i * 10;
+function guideFrame() { const show = S.started && !mapOpen && !vista && dest && routePts.length > 1 && routeLen > 28; let acc = 0, seg = 0; const first = 5 + (clock * 5) % 7;
+  for (let i = 0; i < guide.length; i++) { const g = guide[i]; if (!show) { g.visible = false; continue; } const want = first + i * 7;
     while (seg < routePts.length - 1) { const a = routePts[seg], b = routePts[seg + 1], l = Math.hypot(b.x - a.x, b.z - a.z); if (acc + l >= want) break; acc += l; seg++; }
     if (seg >= routePts.length - 1) { g.visible = false; continue; }
     const a = routePts[seg], b = routePts[seg + 1], l = Math.hypot(b.x - a.x, b.z - a.z) || 1, t = (want - acc) / l, x = lerp(a.x, b.x, t), z = lerp(a.z, b.z, t);
     g.visible = true; g.position.set(x, Math.max(heightAt(x, z), 0) + .55, z); g.rotation.y = Math.atan2(b.x - a.x, b.z - a.z);
-    g.material.opacity = .85 * Math.min(1, (want - 7) / 8) * (1 - sstep(48, 68, want)); } }
+    g.material.opacity = .85 * Math.min(1, (want - 4) / 4) * (1 - sstep(48, 68, want)); } }
 const mini = $('mini'), mctx = mini.getContext('2d'), mapC = $('mapc'), bctx = mapC.getContext('2d');
 let mapOpen = false, mapSel = 0;
 function poiIcon(c, x, y, p, s, hl) { c.lineWidth = Math.max(1.5, s * .2); c.strokeStyle = 'rgba(44,22,34,.95)'; c.fillStyle = p.found ? '#8fe6bc' : p.kind === 'camp' ? '#ffb04a' : '#e9b0ff';
@@ -3264,6 +3264,8 @@ const carH = (x, z) => { const h = onRoof(x, z, S.y) ? gridAt(cave.H0, x, z) : h
 function carSurf() { if (bridge && onDeck(S.x, S.z) > -1e8) return 8; if (onRoof(S.x, S.z, S.y)) return 0; return gridAt(AS, S.x, S.z) > .5 || gridAt(RAS, S.x, S.z) > .5 ? 7 : surfaceAt(S.x, S.z); }
 /* how much of an off-roader each vehicle is: 1 = 4x4 / truck / quad, 0 = low street car */
 const OFFR = { Mule: 1, Pika: .85, Dart: 1, Bison: 1, Rhino: 1, Badger: 1, Drifter: .6, Nomad: .45, Wanderer: .45, Tundra: .35, Pebble: .35, Peanut: .25, Cricket: .15, Sparrow: .15, Hornet: .1, Squire: .1, Breeze: 0, Baron: 0, Regent: 0, Riviera: 0, Thunder: 0 };
+const CLIMB = { Ranger: [0, 1], Hauler: [0, 1], Scout: [0, .7], Thunderbolt: [0, .6], Monza: [2, .55], Patrol: [2, .3], Sanremo: [2, .25], Milano: [1, .3] }; Object.assign(OFFR, { Ranger: 1, Hauler: 1, Scout: .8, Thunderbolt: .5, Monza: .45, Patrol: .2, Sanremo: .15, Milano: .25 });
+function climbK(pitch, loose) { const c = CLIMB[CAR.name] || [0, 1], up = clamp(pitch / .4, 0, 1), wet = Math.min(1, wx.rain * 1.5), st = Math.min(1, Math.abs(S.steer) / .35); let k = 1 - (1 - c[1]) * .62 * sstep(.08, .34, pitch); if (c[1] >= .9) k *= 1 + .3 * up; if (c[0] === 1) k *= 1 - up * (.45 + .3 * wet + .2 * (loose ? 1 : 0) + .2 * st); else if (c[0] === 2) k *= 1 + .1 * up - .12 * up * st * (wet + (loose ? .6 : 0)); return Math.max(.18, k); }
 function offR() { if (!CAR) return 1; const v = OFFR[CAR.name]; return v === undefined ? (CAR.wr > .44 ? 1 : CAR.wr > .37 ? .6 : .2) : v; }
 // what a wheel feels under it: loose stones, and on rough ground a bumpy surface that street suspension can't soak up
 function wheelBump(x, z, ofr) { let b = bumpAt(x, z); const clear = lerp(.16, .5, ofr);
@@ -3283,18 +3285,18 @@ function step(dt) { if (vista) { S.v = 0; return; } if (CH.heli) { heliStep(dt);
   const gF = -9.8 * Math.sin(pitch), gL = 9.8 * Math.sin(roll);
   const live = !S.flooded && S.started && !vista;
   const gas = live ? Math.max(inp.gas, pad.gas, AP.on ? AP.gas : 0) : 0, bT = live ? inp.brake : 0, rT = live ? (inp.rev || 0) : 0, bC = live ? Math.max(pad.brake, AP.on ? AP.brake : 0) : 0, brk = Math.max(bT, rT, bC), rvI = Math.max(rT, bC);
-  const A = (S.low ? CAR.aLo : lerp(CAR.aLo * .92, CAR.aHi * 1.15, clamp(Math.abs(S.v) / 7, 0, 1))) * (CH.turbo ? 2.2 : 1), vmax = (S.low ? 7.5 : CAR.vmax) * (CH.turbo ? 1.6 : 1), v0 = S.v;   // high range pulls like low range from a standstill
+  const A = (S.low ? CAR.aLo : lerp(CAR.aLo * .92, CAR.aHi * 1.15, clamp(Math.abs(S.v) / 7, 0, 1))) * (CH.turbo ? 2.2 : 1) * ((CLIMB[CAR.name] || [0, 1])[1] >= .9 ? 1 + .45 * clamp(pitch / .5, 0, 1) : 1), vmax = (S.low ? 7.5 : CAR.vmax) * (CH.turbo ? 1.6 : 1), v0 = S.v;   // high range pulls like low range from a standstill
   let want = 0, braking = 0;
   if (gas > .03) want = gas * (S.v < -.5 ? A : A * Math.max(0, 1 - S.v / vmax));
   if (brk > .03) { if (S.v > .6) braking = brk * Math.min(17, traction * 1.85) * (DRF() && S.v > 7 && Math.abs(S.steer) > .04 ? 1 - .5 * DRF() : 1); else if (rvI > .03) want = -rvI * A * .8 * Math.max(0, 1 + S.v / (S.low ? 4 : 8)); else braking = bT * Math.min(17, traction * 1.85); }
   S.braking = (S.v > .6 && brk > .03) || bT > .03;
-  const drive = clamp(want, -traction * (CH.turbo ? 1.8 : 1), traction * (CH.turbo ? 1.8 : 1));
-  S.spin = Math.abs(want) > traction + .4 && Math.abs(S.v) < 4;
+  const tracD = traction * climbK(pitch * (want < 0 ? -1 : 1), loose), drive = clamp(want, -tracD * (CH.turbo ? 1.8 : 1), tracD * (CH.turbo ? 1.8 : 1));
+  S.spin = Math.abs(want) > tracD + .4 && Math.abs(S.v) < 4;
   S.v += (drive + gF) * dt;
   // diff lock: if the wheels can't find grip for a moment, the truck crawls itself out
   const push = gas > .5 ? 1 : (rvI > .5 && S.v < .6 ? -1 : 0);
   if (push && Math.abs(S.v) < .7 && !S.winch) S.stuck = (S.stuck || 0) + dt; else if (!push || Math.abs(S.v) > 1.6) S.stuck = 0;
-  if (S.stuck > 1.1 && push && S.v * push < 2.2) { S.v += push * lerp(2.4, 7.5, ofr) * dt; S.spin = false; if (!S.assistMsg) { S.assistMsg = true; toast('Diff lock engaged — crawling out', 2.5); } }
+  { const cl = (CLIMB[CAR.name] || [0, 1])[1], ck = pitch * push > .1 ? (cl >= .9 ? 1 : cl >= .5 ? .45 : 0) : 1; if (S.stuck > 1.1 && push && S.v * push < 2.2) { if (ck > 0) { S.v += push * lerp(2.4, 7.5, ofr) * ck * dt; S.spin = false; if (!S.assistMsg && cl >= .9) { S.assistMsg = true; toast('Diff lock engaged — crawling out', 2.5); } } else if (!(S.spinMsg > clock)) { S.spinMsg = clock + 25; toast('Wheels spinning — too steep for this car', 2.5); } } }
   if (S.winch) { const dx = S.winch.x - S.x, dz = S.winch.z - S.z, dc = Math.hypot(dx, dz), d = dc - S.winch.r;
     if (d < 3.6 || d > 40) { S.winch = null; play('unhook'); if (d < 3.6) toast('Winch released', 1.2); }
     else if (gas > .2) { const along = (dx * sY + dz * cY) / dc; if (S.v * Math.sign(along) < 1.8) S.v += 14 * along * dt;
@@ -3349,7 +3351,7 @@ function tick(now) { fpsFrame(now); pf.f = (pf.f || 0) + 1; pf.calls += renderer
   const tp = Math.tan(vp), tr = Math.tan(vr), gasNow = S.started ? Math.max(inp.gas, pad.gas, AP.on ? AP.gas : 0) : 0, brkNow = S.started ? Math.max(inp.brake, pad.brake, AP.on ? AP.brake : 0) : 0;
   wheels.forEach((w, i) => { const lx = WL[i][0], lz = WL[i][1];
     w.piv.position.y = WR + clamp(wh[i] - (S.y + lz * tp + lx * tr), -.3, lerp(.12, .3, offR()));
-    w.piv.rotation.y = i < 2 ? -S.steer : 0; w.w.rotation.x += (S.spin ? Math.sign(gasNow - brkNow || 1) * 14 : S.v / WR) * dt; });
+    w.piv.rotation.y = i < 2 ? -S.steer : 0; w.w.rotation.x += (S.spin && (!CLIMB[CAR.name] || CLIMB[CAR.name][0] === 0 || (CLIMB[CAR.name][0] === 1) === (i < 2)) ? Math.sign(gasNow - brkNow || 1) * 14 : S.v / WR) * dt; });
   brakeMat.color.setHex(S.braking && S.started ? 0xff3a2a : E.lights > .5 ? 0xa02a22 : 0x7a1f1a); carInvU.value.copy(car.matrixWorld).invert(); tailGlowMat.opacity = Math.min(1, brakeU.value * .9); brakeU.value += ((S.braking && S.started && !vista ? 1.15 : E.lights > .5 ? .35 : 0) - brakeU.value) * Math.min(1, dt * 14);
   if (blob.visible) { blob.position.set(S.x, S.ground + .12, S.z); blob.rotation.set(-Math.PI / 2 - S.pitch, S.yaw, 0); }
   if (S.winch) { const p = rope.geometry.attributes.position; v3.set(0, WR + .45, WHEELBASE / 2 + .95).applyMatrix4(car.matrixWorld);
@@ -3369,7 +3371,7 @@ function tick(now) { fpsFrame(now); pf.f = (pf.f || 0) + 1; pf.calls += renderer
   const spd = Math.abs(S.v), rearX = S.x - sY * WHEELBASE / 2, rearZ = S.z - cY * WHEELBASE / 2;
   if (S.wade > .04 && spd > 1) { for (let n = 0; n < (Math.random() < .7 ? 1 : 0); n++) { const sd = Math.random() < .5 ? 1 : -1, fz = Math.random() < .5 ? 1 : -1; puff(S.x + sY * fz * WHEELBASE / 2 + cY * sd * TRACK / 2, .15, S.z + cY * fz * WHEELBASE / 2 - sY * sd * TRACK / 2, 0xffffff, 1.6 + spd * .2, 3); } }
   else if ((S.spin || (spd > 5 && S.surf !== 2)) && Math.random() < .6) { const sd = Math.random() < .5 ? TRACK / 2 : -TRACK / 2;
-    puff(rearX + cY * sd, S.ground + .3, rearZ - sY * sd, S.surf === 3 ? 0x6a4e3a : S.surf === 4 ? 0xffffff : biome(S.x, S.z) > .5 ? 0xe8b48a : 0xd8c09a, 1); }
+    const fw = S.spin && CLIMB[CAR.name] && CLIMB[CAR.name][0] === 1 ? WHEELBASE : 0; puff(rearX + sY * fw + cY * sd, S.ground + .3, rearZ + cY * fw - sY * sd, S.surf === 3 ? 0x6a4e3a : S.surf === 4 ? 0xffffff : biome(S.x, S.z) > .5 ? 0xe8b48a : 0xd8c09a, 1); }
   let nearCamp = camps[0], nd = 1e9;
   camps.forEach((c, i) => { c.fire.scale.y = .8 + Math.sin(clock * 9 + i) * .25; c.fire.rotation.y = clock * 2; const d = Math.hypot(c.x - S.x, c.z - S.z); if (d < nd) { nd = d; nearCamp = c; }
     if (S.started && d < (c.R || 13)) { if (!c.found) { c.found = true; toast('Camp found: ' + c.name, 3.5); play('camp'); rumble(200, .5); refreshHud(); checkDone(); } if (S.lastCamp !== i) { S.lastCamp = i; save(); } } });
