@@ -3535,7 +3535,7 @@ root.classList.add('painted');   // the pixel-art HUD is used in every look
     ' else if (pm < 3.5) { float k = clamp(pow(l, 0.85) * 1.08 - 0.02, 0.0, 1.0) * (pn - 1.0) + b * 0.9; float ix = clamp(floor(k + 0.5), 0.0, pn - 1.0);' +
     '   for (int i = 0; i < 16; i++) { if (float(i) == ix) c = pal[i]; } }' +
     ' if (uL > 0.5) { vec3 q = floor(clamp(c, 0.0, 1.0) * 31.0 + 0.5); c = mix(c, texture2D(lut, vec2((q.b * 32.0 + q.r + 0.5) / 1024.0, (q.g + 0.5) / 32.0)).rgb, 0.7); }' +
-    ' if (u5 > 0.5) c = floor(clamp(c, 0.0, 1.0) * 31.0 + 0.5) / 31.0; gl_FragColor = vec4(c, 1.0); }', { lut: MINILUT, uL: MINIPL, u5: MINI5, t: { value: null }, z: { value: null }, res: { value: new THREE.Vector2() }, f: { value: new THREE.Vector4() }, pm: { value: 0 }, pal: { value: [] }, pn: { value: 16 }, pI: { value: new THREE.Matrix4() }, cW: { value: new THREE.Matrix4() }, cc: { value: new THREE.Color(1, 1, 1) }, pk: { value: new THREE.Vector4() } });
+    ' if (u5 > 0.5) { c = clamp((c - 0.5) * 1.2 + 0.5, 0.0, 1.0) * 0.7; c = floor(c * 31.0 + 0.5) / 31.0; } gl_FragColor = vec4(c, 1.0); }', { lut: MINILUT, uL: MINIPL, u5: MINI5, t: { value: null }, z: { value: null }, res: { value: new THREE.Vector2() }, f: { value: new THREE.Vector4() }, pm: { value: 0 }, pal: { value: [] }, pn: { value: 16 }, pI: { value: new THREE.Matrix4() }, cW: { value: new THREE.Matrix4() }, cc: { value: new THREE.Color(1, 1, 1) }, pk: { value: new THREE.Vector4() } });
   const hexes = a => a.map(h => new THREE.Color(h));
   // palette kinds: 'lv' shades per channel, 'near' nearest of a fixed set, 'ramp' dark-to-light tones by brightness, 'none' no limit
   const PALS = { 0: ['lv', 6], 1: ['lv', 3], 5: ['none'],
