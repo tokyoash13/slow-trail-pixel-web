@@ -2380,7 +2380,7 @@ function vmRepaint(t, cv, hex) { if (!t.base) return; const s = t.size, x = cv.i
 const brakeU = { value: 0 }, rearZU = { value: -2 }, carInvU = { value: new THREE.Matrix4() };
 function vmBrakeHook(m, paint) { m.userData.pz = { value: 0 }; m.userData.paintOK = { value: 1 }; const ok = m.userData.paintOK; if (!paint) ok.value = 1; m.onBeforeCompile = sh => { sh.uniforms.uBrake = brakeU; sh.uniforms.uRearZ = rearZU; sh.uniforms.uOK = ok; sh.uniforms.uCarInv = carInvU; sh.uniforms.uPz = m.userData.pz; sh.uniforms.uTwo = MP.two; sh.uniforms.uTwoH = MP.h; sh.uniforms.uTwoM = MP.m; sh.uniforms.uCamo = MP.camo;
     sh.vertexShader = 'uniform mat4 uCarInv; varying float vLz; varying vec3 vLp;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vLp = (uCarInv * modelMatrix * vec4(transformed, 1.0)).xyz; vLz = vLp.z;');
-    sh.fragmentShader = 'uniform float uBrake; uniform float uRearZ; uniform float uOK; uniform float uPz; uniform vec3 uTwo; uniform float uTwoH; uniform vec4 uTwoM; uniform float uCamo; varying float vLz; varying vec3 vLp;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n if (uPz > 0.5) { if (uCamo > 0.5) { vec3 q = floor(vLp * 11.0) / 11.0 * 2.4; float n = sin(q.x * 1.7 + sin(q.z * 2.3 + q.y * 1.1) * 1.9) * sin(q.z * 1.3 + sin(q.y * 2.9 + q.x * 0.7) * 1.7) + 0.5 * sin(q.y * 3.1 + q.x * 2.1 + q.z * 1.7); diffuseColor.rgb *= n > 0.42 ? vec3(0.4, 0.42, 0.34) : n < -0.38 ? vec3(1.3, 1.22, 0.96) : vec3(1.0); } else { float tm = uTwoM.x; bool on2 = tm < 0.5 ? vLp.y > uTwoH : tm < 1.5 ? (vLp.y > uTwoM.y && vLp.y < uTwoM.z) : tm < 2.5 ? (vLp.y > uTwoM.y && (vLp.z > uTwoM.z || vLp.z < uTwoM.w)) : tm < 3.5 ? vLp.y < uTwoM.y : (vLp.y > uTwoM.y && vLp.z < uTwoM.z); if (on2) diffuseColor.rgb *= uTwo; } }\n float rd = smoothstep(1.45, 2.1, diffuseColor.r / (max(diffuseColor.g, diffuseColor.b) + .025)) * smoothstep(.05, .12, diffuseColor.r) * smoothstep(uRearZ + 1.1, uRearZ + .6, vLz) * uOK; totalEmissiveRadiance += vec3(1.0, .16, .08) * rd * uBrake;').replace('#include <tonemapping_fragment>', 'gl_FragColor.rgb *= 1.28;\n#include <tonemapping_fragment>').replace('#include <dithering_fragment>', '#include <dithering_fragment>\n gl_FragColor.a = 0.5;'); };
+    sh.fragmentShader = 'uniform float uBrake; uniform float uRearZ; uniform float uOK; uniform float uPz; uniform vec3 uTwo; uniform float uTwoH; uniform vec4 uTwoM; uniform float uCamo; varying float vLz; varying vec3 vLp;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n if (uPz > 0.5) { if (uCamo > 0.5) { vec3 q = floor(vLp * 11.0) / 11.0 * 2.4; float n = sin(q.x * 1.7 + sin(q.z * 2.3 + q.y * 1.1) * 1.9) * sin(q.z * 1.3 + sin(q.y * 2.9 + q.x * 0.7) * 1.7) + 0.5 * sin(q.y * 3.1 + q.x * 2.1 + q.z * 1.7); diffuseColor.rgb *= n > 0.42 ? vec3(0.4, 0.42, 0.34) : n < -0.38 ? vec3(1.3, 1.22, 0.96) : vec3(1.0); } else { float tm = uTwoM.x; bool on2 = tm < 0.5 ? vLp.y > uTwoH : tm < 1.5 ? (vLp.y > uTwoM.y && vLp.y < uTwoM.z) : tm < 2.5 ? (vLp.y > uTwoM.y && (vLp.z > uTwoM.z || vLp.z < uTwoM.w)) : tm < 3.5 ? vLp.y < uTwoM.y : tm < 4.5 ? (vLp.y > uTwoM.y && vLp.z < uTwoM.z) : (vLp.z > uTwoM.y && vLp.z < uTwoM.z); if (on2) diffuseColor.rgb *= uTwo; } }\n float rd = smoothstep(1.45, 2.1, diffuseColor.r / (max(diffuseColor.g, diffuseColor.b) + .025)) * smoothstep(.05, .12, diffuseColor.r) * smoothstep(uRearZ + 1.1, uRearZ + .6, vLz) * uOK; totalEmissiveRadiance += vec3(1.0, .16, .08) * rd * uBrake;').replace('#include <tonemapping_fragment>', 'gl_FragColor.rgb *= 1.28;\n#include <tonemapping_fragment>').replace('#include <dithering_fragment>', '#include <dithering_fragment>\n gl_FragColor.a = 0.5;'); };
   m.customProgramCacheKey = () => 'vmbrake'; return m; }
 function vmGet(name) { if (vmc[name]) return vmc[name]; const D = VMD[name], M = vmc[name] = { m: D.m, tex: {}, a: D.m.paint0, b: D.m.paint0, body: [], wheel: [] };
   const phong = o => { const pt = !!o.paintTex; delete o.paintTex; return vmBrakeHook(new THREE.MeshPhongMaterial(Object.assign({ vertexColors: true, side: THREE.DoubleSide }, o)), pt); };
@@ -4452,7 +4452,7 @@ function fireworksFrame(dt) { const on = CH.fireworks, dark = typeof E !== 'unde
 
 /* fire: exhaust flames and backfire pops every time you press the gas */
 const FX = { prev: 0, pops: [], t: 0 };
-const flameTex = radTex(64, [[0.0,255,255,235,1.0],[0.2,255,215,120,0.95],[0.5,255,110,25,0.6],[0.8,190,40,10,0.18],[1.0,120,20,0,0.0]]);
+const flameTex = radTex(64, [[0.0,255,255,245,1.0],[0.28,255,238,150,1.0],[0.46,255,150,30,0.95],[0.6,235,70,10,0.5],[0.7,170,30,0,0.0],[1.0,120,20,0,0.0]]);
 FX.sprites = []; for (let i = 0; i < 96; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0, fog: false })); s.visible = false; s.userData = { life: 0 }; scene.add(s); FX.sprites.push(s); }
 const smokeTex = radTex(64, [[0.0,60,56,52,0.75],[0.55,70,66,62,0.35],[1.0,80,76,72,0.0]]);
 FX.smoke = []; for (let i = 0; i < 30; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, depthWrite: false, transparent: true, opacity: 0 })); s.visible = false; s.userData = { life: 0, smoke: 1 }; scene.add(s); FX.smoke.push(s); }
@@ -4471,11 +4471,11 @@ function fxPopSound(big) { if (!A.ctx || !A.sfx) return; const c = A.ctx, t0 = c
 function fxFlame(big) { if (!car) return; const z = rearZU.value - .06, y = Math.max(.32, (typeof WR !== 'undefined' ? WR : .45) * .8), xs = [TRACK * .27, -TRACK * .27], sY = Math.sin(S.yaw), cY = Math.cos(S.yaw), K = CH.big ? 2 : 1;
   for (const x of xs) { const p = new THREE.Vector3(x, y, z); car.localToWorld(p);
     // a long jet of fire: a white-hot core near the pipe, bigger orange balls further back
-    for (let j = 0; j < (big ? 7 : 5); j++) { const s = FX.sprites[FX.si = (FX.si + 1) % FX.sprites.length], u = s.userData, f = j / 6, sp = (9 + f * 15 + Math.random() * 4) * (big ? 1.3 : 1);
-      s.position.copy(p); u.life = u.max = (big ? .42 : .3) * (.6 + f * .7) + Math.random() * .08; u.vx = -sY * sp + sY * S.v + (Math.random() - .5) * 1.5; u.vz = -cY * sp + cY * S.v + (Math.random() - .5) * 1.5; u.vy = .8 + Math.random() * 1.4 + f;
-      u.s0 = (big ? 1.25 : .85) * (.55 + f * .9) * K; u.drag = 3.2; s.visible = true; }
+    for (let j = 0; j < (big ? 7 : 5); j++) { const s = FX.sprites[FX.si = (FX.si + 1) % FX.sprites.length], u = s.userData, f = j / 6, sp = (13 + f * 22 + Math.random() * 9) * (big ? 1.35 : 1);
+      s.position.copy(p); u.life = u.max = (big ? .26 : .19) * (.6 + f * .7) + Math.random() * .05; u.vx = -sY * sp + sY * S.v + (Math.random() - .5) * 5; u.vz = -cY * sp + cY * S.v + (Math.random() - .5) * 5; u.vy = (Math.random() - .25) * 4 + f;
+      u.s0 = (big ? 1.25 : .85) * (.55 + f * .9) * K * .5; u.drag = 5.5; s.visible = true; }
     for (let j = 0; j < (big ? 2 : 1); j++) { const s = FX.smoke[FX.mi = (FX.mi + 1) % FX.smoke.length], u = s.userData; s.position.copy(p); u.life = u.max = 1.4 + Math.random() * .6;
-      u.vx = -sY * (5 + Math.random() * 3) + sY * S.v * .6; u.vz = -cY * (5 + Math.random() * 3) + cY * S.v * .6; u.vy = 1 + Math.random(); u.s0 = (big ? 1.4 : 1) * K; u.drag = 1.6; s.visible = true; } }
+      u.vx = -sY * (5 + Math.random() * 3) + sY * S.v * .6; u.vz = -cY * (5 + Math.random() * 3) + cY * S.v * .6; u.vy = 1 + Math.random(); u.s0 = (big ? 1.4 : 1) * K * .5; u.drag = 1.6; s.visible = true; } }
   fxPopSound(big); }
 function fireFrame(dt) { const g = S.started && !vista && !CH.heli && !CH.noclip ? chGas() : 0;
   if (CH.fire && g > .5 && FX.prev < .3) { let t = 0; FX.pops = [0]; for (let k = 0; k < 5; k++) FX.pops.push(t += .09 + Math.random() * .12); FX.big = 2; FX.t = 0; }
@@ -4484,7 +4484,7 @@ function fireFrame(dt) { const g = S.started && !vista && !CH.heli && !CH.noclip
   for (const L of [FX.sprites, FX.smoke]) for (const s of L) { const u = s.userData; if (u.life <= 0) { if (s.visible) s.visible = false; continue; } u.life -= dt; const k = 1 - u.life / u.max, dr = Math.exp(-dt * (u.drag || 0));
     u.vx *= dr; u.vz *= dr; s.position.x += u.vx * dt; s.position.y += u.vy * dt; s.position.z += u.vz * dt;
     if (u.smoke) { s.scale.setScalar(u.s0 * (.6 + k * 2.6)); s.material.opacity = Math.min(1, k * 6) * (1 - k) * .55; }
-    else { s.scale.setScalar(u.s0 * (.5 + k * 1.5)); s.material.opacity = Math.max(0, 1 - k * k) * .95; s.material.color.setRGB(1, 1 - k * .35, 1 - k * .7); }
+    else { s.scale.setScalar(u.s0 * (.35 + Math.sqrt(k) * 1.65)); s.material.opacity = k < .7 ? 1 : Math.max(0, 1 - (k - .7) / .3); s.material.color.setRGB(1, 1 - k * .35, 1 - k * .7); }
     s.material.rotation += dt * 4; } }
 
 /* galaxy: at night a vast coloured spiral galaxy fills the sky in place of the usual stars */
@@ -4777,7 +4777,7 @@ function moonFrame(dt) { const want = CH.supermoon ? 1 : 0, night = typeof E !==
     if (seen && MOON.first) { MOON.first = false; if (destManual) autoDest(); toast('Look south-west: the supermoon is rising over the sea', 4); }
     if (!seen) MOON.first = false;
     if (seen && MOON.told && Math.hypot((dest || {}).x - S.x || 0, (dest || {}).z - S.z || 0) < 40) { toast('There it is — the supermoon over the sea', 4); MOON.told = false; } } }
-
+window.__dbg = { MP, VMD, SIREN_PTS, CH, POL }; 
 /* ---------- mini version: only pictures stand on the ground ---------- */
 { const mk = (g, cap) => { const sb = sprBoard(null, 900, { g, w: 1, h: 1 }), m = new THREE.InstancedMesh(sb.geo, sb.mat, cap); m.frustumCulled = false; m.setColorAt(0, new THREE.Color(1, 1, 1)); m.count = 0; m.__mini = 1; scene.add(m); return m; };
   const P = {}, CAP = { joshua: 420, cactus: 420, stump: 700, fence: 200, sign: 60, mapboard: 60, tent: 60, flag: 120, bench: 60 }; for (const g of ['stump', 'fence', 'sign', 'mapboard', 'pavilion', 'cabin', 'bigtent', 'tower', 'tent', 'lantern', 'pot', 'fire', 'bench', 'pile', 'flag', 'gate', 'lamp', 'marker', 'lighthouse', 'cairn', 'arch', 'jettyb', 'viewpoint', 'startg', 'finishg', 'tyres', 'joshua', 'cactus', 'hiker', 'fallw', 'fallt', 'cavem']) P[g] = mk(g, CAP[g] || 30);
