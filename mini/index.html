@@ -68,7 +68,7 @@
   .small { width: 60px; height: 36px; font-size: 11px; border-radius: 11px; }
   #bLow { top: 10px; right: 140px; } #bWinch { top: 10px; right: 76px; } #bCam { top: 10px; right: 12px; }
   #bReset { top: 52px; right: 140px; } #bTime { top: 52px; right: 76px; } #bMenu { top: 52px; right: 12px; }
-  #root.pad .pedal { display: none; }
+  #root.pad .pedal { display: none; } #root.pad #topbar, #root.pad #miniTag { display: none; }
   #root.inmenu .hud, #root.inmenu .btn { display: none; }
   #mini.hud { pointer-events: auto; }
   #mini { position: absolute; left: 12px; top: 90px; opacity: .8; width: min(27vmin, 132px); height: min(27vmin, 132px); border-radius: 50%; pointer-events: auto; touch-action: none; box-shadow: 0 2px 8px rgba(30,10,20,.45); }
@@ -2940,7 +2940,7 @@ function pollPad(dt) {
     for (let i = 0; i < list.length; i++) if (list[i] && list[i].connected && list[i].buttons.length >= 4) { gp = list[i]; pad.index = i; break; }
   }
   if (!gp) { pad.steer = pad.gas = pad.brake = 0; return; }
-  if (pad.id !== gp.id) { pad.id = gp.id; $('padstat').textContent = 'controller connected — D-pad: car and time · LB / RB: season · X: paint · A: start'; }
+  if (pad.id !== gp.id) { pad.id = gp.id; if (!pad.on) { pad.on = true; root.classList.add('pad'); } $('padstat').textContent = 'controller connected — D-pad: car and time · LB / RB: season · X: paint · A: start'; }
   const b = i => gp.buttons[i] ? Math.max(gp.buttons[i].value || 0, gp.buttons[i].pressed ? 1 : 0) : 0;
   const ax = i => { const v = gp.axes[i] || 0, a = Math.abs(v); return a < .14 ? 0 : Math.sign(v) * (a - .14) / .86; };
   const sx = ax(0), rx = ax(2), ry = ax(3);
@@ -2957,7 +2957,7 @@ function pollPad(dt) {
   if (any && !pad.on) { pad.on = true; root.classList.add('pad'); if (S.started) showPadHint(); }
 }
 let padHintT = 0; function showPadHint() { if (showPadHint.done) return; showPadHint.done = true; $('padhint').classList.add('show'); padHintT = 7; }
-window.addEventListener('gamepadconnected', () => { $('padstat').textContent = 'controller connected — D-pad: car and time · LB / RB: season · X: paint · A: start'; });
+window.addEventListener('gamepaddisconnected', () => { const l = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []; if (!l.length) { pad.on = false; pad.id = null; root.classList.remove('pad'); } }); window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' && pad.on) { pad.on = false; root.classList.remove('pad'); } }, true); window.addEventListener('gamepadconnected', () => { $('padstat').textContent = 'controller connected — D-pad: car and time · LB / RB: season · X: paint · A: start'; });
 
 function fadeTo(msg, fn) { const f = $('fade'); $('fadeMsg').textContent = msg; f.classList.add('show'); S.flooded = true;
   setTimeout(() => { fn(); S.flooded = false; f.classList.remove('show'); }, 900); }
@@ -3472,7 +3472,7 @@ const PIXLOOKS = [
   ['Handheld LCD', 240, 0, 1], ['Arcade CRT', 240, 0, 3], ['Studio monitor', 240, 0, 4], ['Living-room TV', 240, 0, 5], ['Pocket handheld', 144, 3, 2],
   ['Grey pocket', 144, 4, 2], ['Fantasy console', 180, 2, 0], ['Composite 90s', 240, 0, 6], ['VHS tape', 240, 0, 7], ['Sharp pixels', 240, 0, 0], ['Smooth pixels', 320, 5, 8], ['64 colours', 200, 1, 0],
   ['Red LED goggles', 144, 6, 9], ['Amber terminal', 200, 7, 9], ['Green terminal', 200, 8, 9], ['CGA computer', 200, 9, 10], ['Home computer', 200, 10, 5],
-  ['Sepia memories', 240, 11, 6], ['Black & white TV', 240, 12, 5], ['VGA scanlines', 240, 0, 10], ['Pixel Art', 240, 13, 9], ['Chunky pixels', 240, 13, 0], ['GBA', 240, 0, 1], ['GBA 4x', 240, 0, 1]];
+  ['Sepia memories', 240, 11, 6], ['Black & white TV', 240, 12, 5], ['VGA scanlines', 240, 0, 10], ['Pixel Art', 240, 13, 9], ['Chunky pixels', 240, 13, 0], ['GBA', 240, 13, 1], ['GBA 4x', 240, 13, 1]];
 const PIXSIZES = [[144, 'Tiny'], [180, 'Chunky'], [240, 'Classic'], [320, 'Fine']];
 const PIXPALS = ['Full colour', '64 colours', '16 colours', 'Four greens', 'Four greys', 'Smooth', 'Red LED', 'Amber', 'Green phosphor', 'CGA', 'Home computer', 'Sepia', 'Eight greys', 'Pixel Art'];
 const PIXSCRS = ['Sharp pixels', 'Handheld LCD', 'Dot-matrix LCD', 'Arcade CRT', 'Studio monitor', 'Living-room TV', 'Composite', 'VHS tape', 'Smooth pixels', 'Phosphor glow', 'VGA scanlines'];
@@ -3547,7 +3547,7 @@ root.classList.add('painted');   // the pixel-art HUD is used in every look
     13: ['paint'], 11: ['ramp', hexes([0x1e140c, 0x4a3522, 0x7a5a3a, 0xa8875e, 0xd1b48a, 0xf0dfbf])], 12: ['ramp', hexes([0x101010, 0x2e2e2e, 0x4c4c4c, 0x6b6b6b, 0x8c8c8c, 0xadadad, 0xd0d0d0, 0xf2f2f2])] };
   const padPal = p => { const a = p.slice(); while (a.length < 16) a.push(p[p.length - 1]); return a; };
   // stage 2, at screen resolution: the screen the pixels are shown on
-  const blit = mk('uniform sampler2D t; uniform vec2 res; uniform vec2 scr; uniform float mode; uniform float hi; uniform float tm; uniform vec3 bg; varying vec2 vUv;' +
+  const blit = mk('uniform sampler2D t; uniform vec2 res; uniform vec2 scr; uniform float mode; uniform float hi; uniform float gn; uniform float tm; uniform vec3 bg; varying vec2 vUv;' +
     'vec3 tx(vec2 p){ return texture2D(t, (floor(p) + 0.5) / res).rgb; }' +
     'vec3 lin(vec3 c){ return c * c; } vec3 gam(vec3 c){ return sqrt(max(c, 0.0)); }' +
     'float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }' +
@@ -3563,7 +3563,7 @@ root.classList.add('painted');   // the pixel-art HUD is used in every look
     ' if (mode < 0.5) { c = tx(uv * res); }' +
     ' else if (mode < 1.5) { vec2 p = uv * res, f = fract(p); c = hi > 0.5 ? texture2D(t, uv).rgb : tx(p); vec3 sub = clamp(1.0 - abs(vec3(f.x * 3.0) - vec3(0.5, 1.5, 2.5)), 0.0, 1.0);' +
     '   float g = smoothstep(0.0, 0.14, f.x) * smoothstep(1.0, 0.86, f.x) * smoothstep(0.0, 0.14, f.y) * smoothstep(1.0, 0.86, f.y);' +
-    '   c = mix(c, c * mix(vec3(1.0), sub * 1.75 + 0.18, 0.75) * mix(0.42, 1.12, g) * vec3(1.34, 1.24, 1.34), k); }' +
+    '   c = mix(c, c * mix(vec3(1.0), sub * 1.75 + 0.18, 0.75) * mix(0.42, 1.12, g) * vec3(1.34, 1.24, 1.34) * gn, k); }' +
     ' else if (mode < 2.5) { vec2 p = uv * res, f = fract(p); vec3 dot0 = tx(p), sh = tx(p - vec2(1.0, -1.0) * 0.35);' +
     '   float m = smoothstep(0.04, 0.12, f.x) * smoothstep(0.96, 0.88, f.x) * smoothstep(0.04, 0.12, f.y) * smoothstep(0.96, 0.88, f.y);' +
     '   vec3 base = mix(bg, bg * 0.82 + sh * 0.1, 0.6); c = mix(dot0, mix(base, dot0, m), k); c *= 1.0 - 0.05 * hash(floor(p) * 0.37); }' +
@@ -3592,7 +3592,7 @@ root.classList.add('painted');   // the pixel-art HUD is used in every look
     ' else if (mode > 9.5) { vec2 p = uv * res, f = fract(p); c = tx(p); c *= mix(1.0, mix(1.08, 0.5, smoothstep(0.55, 0.9, f.y)), k); }' +
     ' else { vec2 p = uv * res - 0.5, f = fract(p), i0 = floor(p), a = clamp((f - 0.5) * ps + 0.5, 0.0, 1.0);' +
     '   c = mix(mix(tx(i0 + 0.5), tx(i0 + vec2(1.5, 0.5)), a.x), mix(tx(i0 + vec2(0.5, 1.5)), tx(i0 + 1.5), a.x), a.y); }' +
-    ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }', { t: { value: null }, res: { value: new THREE.Vector2() }, scr: { value: new THREE.Vector2() }, mode: { value: 1 }, hi: { value: 0 }, tm: { value: 0 }, bg: { value: new THREE.Color(0x8b9a6b) } });
+    ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }', { t: { value: null }, res: { value: new THREE.Vector2() }, scr: { value: new THREE.Vector2() }, mode: { value: 1 }, hi: { value: 0 }, gn: { value: 1 }, tm: { value: 0 }, bg: { value: new THREE.Color(0x8b9a6b) } });
   const pixSize = () => { const v = renderer.getDrawingBufferSize(new THREE.Vector2()), n = Math.max(1, Math.max(1, Math.round(v.y / Math.max(90, PIX.h))) / (PIX.up || 1)), h = PIX.look === 22 ? 160 : PIX.look === 23 ? 640 : Math.ceil(v.y / n), w = PIX.look === 22 ? 240 : PIX.look === 23 ? 960 : Math.ceil(v.x / n); if (PX.w === w && PX.h === h) return;
     PX.w = w; PX.h = h; for (const r of [PX.a, PX.b]) if (r) r.dispose(); const o = { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter };
     PX.a = new THREE.WebGLRenderTarget(w, h, o); PX.a.depthTexture = new THREE.DepthTexture(w, h); PX.a.depthTexture.type = THREE.UnsignedIntType; PX.b = new THREE.WebGLRenderTarget(w, h, Object.assign({ depthBuffer: false }, o)); };
@@ -3607,7 +3607,7 @@ root.classList.add('painted');   // the pixel-art HUD is used in every look
     const cols = Array.isArray(P[1]) ? P[1] : PALS[2][1]; u.pal.value = padPal(cols); u.pn.value = cols.length; pass(pixMat, PX.b);
     const bu = blit.uniforms; bu.t.value = PX.b.texture; bu.res.value.set(PX.w, PX.h); renderer.getDrawingBufferSize(bu.scr.value); bu.mode.value = PIX.scr; bu.tm.value = (performance.now() - PIX.t0) / 1000;
     bu.bg.value.copy(P[0] === 'ramp' ? cols[cols.length - 1] : new THREE.Color(0x24272a)).multiplyScalar(P[0] === 'ramp' ? .88 : 1);
-    if (PIX.look >= 22) { const cs = renderer.getSize(PX.v4 || (PX.v4 = new THREE.Vector2())), pr = renderer.getPixelRatio(), vw = Math.min(cs.x, Math.floor(cs.y * 1.5)), vh = Math.min(cs.y, Math.floor(vw / 1.5)), cc = renderer.getClearColor(PX.cc || (PX.cc = new THREE.Color())).clone(), ca = renderer.getClearAlpha(); renderer.setRenderTarget(null); renderer.setViewport(0, 0, cs.x, cs.y); renderer.setClearColor(0x0c0c10, 1); renderer.clear(); const ac = renderer.autoClear; renderer.autoClear = false; renderer.setViewport(Math.floor((cs.x - vw) / 2), Math.floor((cs.y - vh) / 2), vw, vh); bu.scr.value.set(vw * pr, vh * pr); bu.res.value.set(240, 160); bu.hi.value = PIX.look === 23 ? 1 : 0; pass(blit, null); bu.hi.value = 0; renderer.autoClear = ac; renderer.setClearColor(cc, ca); renderer.setViewport(0, 0, cs.x, cs.y); return true; } pass(blit, null); return true; };
+    if (PIX.look >= 22) { const cs = renderer.getSize(PX.v4 || (PX.v4 = new THREE.Vector2())), pr = renderer.getPixelRatio(), vw = Math.min(cs.x, Math.floor(cs.y * 1.5)), vh = Math.min(cs.y, Math.floor(vw / 1.5)), cc = renderer.getClearColor(PX.cc || (PX.cc = new THREE.Color())).clone(), ca = renderer.getClearAlpha(); renderer.setRenderTarget(null); renderer.setViewport(0, 0, cs.x, cs.y); renderer.setClearColor(0x0c0c10, 1); renderer.clear(); const ac = renderer.autoClear; renderer.autoClear = false; renderer.setViewport(Math.floor((cs.x - vw) / 2), Math.floor((cs.y - vh) / 2), vw, vh); bu.scr.value.set(vw * pr, vh * pr); bu.res.value.set(240, 160); bu.hi.value = PIX.look === 23 ? 1 : 0; bu.gn.value = 0.84; pass(blit, null); bu.hi.value = 0; bu.gn.value = 1; renderer.autoClear = ac; renderer.setClearColor(cc, ca); renderer.setViewport(0, 0, cs.x, cs.y); return true; } pass(blit, null); return true; };
   dof.draw = () => { SPRU.value = 1; SPRT.value = camMode === 3 ? 1 : 0; BBE.value = -60; if (PIX.on && pixDraw()) return; if (!(dof.on || GLOW.on) || !dof.ok || quality < 2 || !(renderer.capabilities.isWebGL2 || renderer.extensions.get('WEBGL_depth_texture'))) { renderer.render(scene, camera); return; } size();
     renderer.setRenderTarget(rt); renderer.render(scene, camera); const sh = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false;
     if (dof.on) { const r = 1.15 * dof.h / 720; blur.uniforms.t.value = rt.texture; blur.uniforms.d.value.set(r / dof.w, 0); pass(blur, b1); blur.uniforms.t.value = b1.texture; blur.uniforms.d.value.set(0, r / dof.h); pass(blur, b2); }
