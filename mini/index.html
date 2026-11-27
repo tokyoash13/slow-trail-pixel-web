@@ -2273,7 +2273,7 @@ function copMake() { if (!VMD.patrolAI) VMD.patrolAI = VMD.police; const M = vmG
   for (const e of M.body) { const x = new THREE.Mesh(e.g, e.mat); x.castShadow = e.k !== 'glass'; g.add(x); }
   const lamps = sirenLamps(g, SIREN_PTS.police), wh = [], hx = m.track / 2, zf = m.wb / 2;
   for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { const piv = new THREE.Group(); piv.position.set(sx * hx, m.wr, sz * zf); const w = vmWheel('patrolAI')(sx * hx); piv.add(w); g.add(piv); wh.push({ piv, w, front: sz > 0 }); }
-  scene.add(g); return { g, wh, lamps, m, x: 0, z: 0, y: 0, yaw: 0, v: 0, steer: 0, back: 0, cool: 0, still: 0, voice: null, spin: 0 }; }
+  g.__mini = 1; scene.add(g); return { g, wh, lamps, m, x: 0, z: 0, y: 0, yaw: 0, v: 0, steer: 0, back: 0, cool: 0, still: 0, voice: null, spin: 0 }; }
 function copSpawn(c, dist) { let best = null;
   for (let k = 0; k < 12; k++) { const a = S.yaw + Math.PI + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * .35, x = S.x + Math.sin(a) * dist, z = S.z + Math.cos(a) * dist;
     if (Math.abs(x) > HALF - 40 || Math.abs(z) > HALF - 40) continue; const h = heightAt(x, z); if (h > .2 && slopeAt(x, z) < .5) { best = [x, z]; break; } }
